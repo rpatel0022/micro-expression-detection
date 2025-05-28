@@ -2,46 +2,9 @@ name: Deploy CS179G Project to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: web-interface/package-lock.json
-        
-    - name: Install dependencies
-      run: |
-        cd web-interface
-        npm ci
-        
-    - name: Build React app
-      run: |
-        cd web-interface
-        npm run build
-        
-    - name: Setup Pages
-      uses: actions/configure-pages@v3
-      
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v2
-      with:
-        path: web-interface/build
-        
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v2
+    branches: [main]
 
 # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
 permissions:
@@ -54,3 +17,40 @@ permissions:
 concurrency:
   group: "pages"
   cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: web-interface/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd web-interface
+          npm ci
+
+      - name: Build React app
+        run: |
+          cd web-interface
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: web-interface/build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
