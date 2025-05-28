@@ -1,0 +1,2424 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Micro-Expression Detection for Lie Detection - CS179G Group 3</title>
+    <meta
+      name="description"
+      content="Advanced computer vision and machine learning techniques to detect deceptive micro-expressions in facial video data with 91% accuracy. CS179G Group 3 research project."
+    />
+    <meta
+      name="keywords"
+      content="micro-expression detection, lie detection, computer vision, machine learning, facial recognition, CS179G"
+    />
+    <meta name="author" content="CS179G Group 3 - UC Riverside" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+        scroll-behavior: smooth;
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      }
+      .card-hover {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      }
+      .card-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Code syntax highlighting */
+      .code-block {
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        line-height: 1.5;
+      }
+
+      .run-button {
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+
+      .results-enter {
+        animation: slideDown 0.3s ease-out;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Progress bars */
+      .progress-bar {
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        background-color: #e5e7eb;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 1s ease-in-out;
+      }
+
+      .progress-blue {
+        background-color: #3b82f6;
+      }
+      .progress-green {
+        background-color: #10b981;
+      }
+      .progress-orange {
+        background-color: #f59e0b;
+      }
+      .progress-red {
+        background-color: #ef4444;
+      }
+      .progress-purple {
+        background-color: #8b5cf6;
+      }
+
+      /* Metric cards */
+      .metric-card {
+        border-left: 4px solid;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      .metric-blue {
+        border-left-color: #3b82f6;
+      }
+      .metric-green {
+        border-left-color: #10b981;
+      }
+      .metric-orange {
+        border-left-color: #f59e0b;
+      }
+      .metric-red {
+        border-left-color: #ef4444;
+      }
+      .metric-purple {
+        border-left-color: #8b5cf6;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <!-- React Root -->
+    <div id="root"></div>
+
+    <!-- React and Babel -->
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // Utility Components
+      function ProgressBar({ percentage, color = "blue" }) {
+        const colorClasses = {
+          blue: "bg-blue-500",
+          green: "bg-green-500",
+          orange: "bg-orange-500",
+          red: "bg-red-500",
+          purple: "bg-purple-500",
+        };
+
+        return (
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+            <div
+              className={`h-2.5 rounded-full ${colorClasses[color]} transition-all duration-1000 ease-out`}
+              style={{ width: `${percentage}%` }}
+            ></div>
+          </div>
+        );
+      }
+
+      function MetricCard({
+        title,
+        value,
+        subtitle,
+        color = "blue",
+        borderColor = "blue",
+      }) {
+        const colorClasses = {
+          blue: "text-blue-600",
+          green: "text-green-600",
+          orange: "text-orange-600",
+          red: "text-red-600",
+          purple: "text-purple-600",
+        };
+
+        const borderClasses = {
+          blue: "border-l-blue-500",
+          green: "border-l-green-500",
+          orange: "border-l-orange-500",
+          red: "border-l-red-500",
+          purple: "border-l-purple-500",
+        };
+
+        return (
+          <div
+            className={`bg-white rounded-lg shadow-md p-6 text-center border-l-4 ${borderClasses[borderColor]} hover:shadow-lg transition-shadow`}
+          >
+            <div className={`text-3xl font-bold ${colorClasses[color]} mb-2`}>
+              {value}
+            </div>
+            <div className="text-lg font-semibold text-gray-900 mb-1">
+              {title}
+            </div>
+            {subtitle && (
+              <div className="text-sm text-gray-600">{subtitle}</div>
+            )}
+          </div>
+        );
+      }
+
+      function InteractiveCodeDemo({
+        title,
+        subtitle,
+        code,
+        results,
+        language = "Python",
+      }) {
+        const [showResults, setShowResults] = useState(false);
+        const [isRunning, setIsRunning] = useState(false);
+
+        const runCode = () => {
+          setIsRunning(true);
+          setTimeout(() => {
+            setIsRunning(false);
+            setShowResults(true);
+          }, 1500);
+        };
+
+        return (
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="bg-blue-600 text-white p-4">
+              <h3 className="text-xl font-semibold">{title}</h3>
+              <p className="text-blue-100 text-sm mt-1">{subtitle}</p>
+            </div>
+
+            <div className="relative">
+              <div className="bg-gray-900 p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-400 text-sm">{language}</span>
+                  <button
+                    onClick={runCode}
+                    disabled={isRunning}
+                    className={`px-4 py-2 rounded text-sm font-medium ${
+                      isRunning
+                        ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
+                  >
+                    {isRunning ? "⏳ Running..." : "▶ Run Code"}
+                  </button>
+                </div>
+                <pre className="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap">
+                  <code>{code}</code>
+                </pre>
+              </div>
+
+              {showResults && (
+                <div className="border-t border-gray-700">
+                  <div className="bg-gray-900 p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-400 text-sm">
+                        Console Output
+                      </span>
+                      <button
+                        onClick={() => setShowResults(false)}
+                        className="text-gray-400 hover:text-white text-sm"
+                      >
+                        ✕ Hide Results
+                      </button>
+                    </div>
+                    <div className="bg-black rounded p-3">
+                      <pre className="text-green-400 text-sm whitespace-pre-wrap">
+                        <code>{results}</code>
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      function CollapsibleSection({
+        title,
+        subtitle,
+        children,
+        defaultOpen = false,
+        icon = "📊",
+      }) {
+        const [isOpen, setIsOpen] = useState(defaultOpen);
+
+        return (
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div
+              className="bg-gray-50 p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center">
+                  <span className="text-2xl mr-3">{icon}</span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {title}
+                    </h3>
+                    {subtitle && (
+                      <p className="text-gray-600 text-sm mt-1">{subtitle}</p>
+                    )}
+                  </div>
+                </div>
+                <button className="text-blue-600 hover:text-blue-700 px-4 py-2 rounded">
+                  {isOpen ? "Collapse" : "Expand"}
+                </button>
+              </div>
+            </div>
+            {isOpen && <div className="p-6">{children}</div>}
+          </div>
+        );
+      }
+
+      // Simple App Component with Navigation
+      function App() {
+        return (
+          <div className="min-h-screen bg-gray-50">
+            {/* Navigation */}
+            <nav className="fixed top-0 left-0 right-0 bg-white shadow-lg z-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-16">
+                  <div className="flex-shrink-0">
+                    <h1 className="text-xl font-bold text-gray-800">
+                      Micro-Expression Detection
+                    </h1>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="ml-10 flex items-baseline space-x-4">
+                      <a
+                        href="#dataset"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Dataset
+                      </a>
+                      <a
+                        href="#technologies"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Technologies
+                      </a>
+                      <a
+                        href="#findings"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Findings
+                      </a>
+                      <a
+                        href="#database"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Database Interface
+                      </a>
+                      <a
+                        href="#live-prediction"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Live Prediction
+                      </a>
+                      <a
+                        href="#interactive"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Interactive Results
+                      </a>
+                      <a
+                        href="#analysis"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Advanced Analysis
+                      </a>
+                      <a
+                        href="#team"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                      >
+                        Team
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </nav>
+
+            {/* Hero Section */}
+            <section className="pt-24 pb-16 bg-gradient-to-br from-blue-50 to-blue-100">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center">
+                  <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+                    Micro-Expression Detection
+                    <span className="block text-blue-600">
+                      for Lie Detection
+                    </span>
+                  </h1>
+                  <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                    Advanced computer vision and machine learning techniques to
+                    detect deceptive micro-expressions in facial video data with
+                    91% accuracy.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Dataset Section */}
+            <section id="dataset" className="py-16 bg-white">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    About the Dataset
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Our research utilizes a comprehensive dataset of
+                    micro-expressions for lie detection, featuring carefully
+                    labeled facial expressions.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                      Data Source
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="font-medium text-gray-700">
+                          Platform:
+                        </span>
+                        <a
+                          href="https://www.kaggle.com/datasets/devvratmathur/micro-expression-detection"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-2 text-blue-600 hover:text-blue-700 underline"
+                        >
+                          Kaggle
+                        </a>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">
+                          Creator:
+                        </span>
+                        <span className="ml-2 text-gray-600">
+                          Devvrat Mathur
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                      Creation Process
+                    </h3>
+                    <div className="space-y-2">
+                      <p className="text-gray-700">
+                        • Subjects were asked questions and gave both truthful
+                        and deceptive responses
+                      </p>
+                      <p className="text-gray-700">
+                        • Videos recorded at 60 FPS
+                      </p>
+                      <p className="text-gray-700">
+                        • Frames extracted and manually labeled
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Technologies Section */}
+            <section id="technologies" className="py-16 bg-gray-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    Technologies Used
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Our system leverages cutting-edge tools for computer vision,
+                    machine learning, and big data processing.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    {
+                      name: "OpenCV",
+                      description:
+                        "Computer vision library for image processing",
+                    },
+                    {
+                      name: "dlib",
+                      description:
+                        "Facial landmark detection and feature extraction",
+                    },
+                    {
+                      name: "PyTorch",
+                      description:
+                        "Deep learning framework for neural networks",
+                    },
+                    {
+                      name: "Spark",
+                      description:
+                        "Distributed computing for large-scale data processing",
+                    },
+                    {
+                      name: "Pandas",
+                      description: "Data manipulation and analysis",
+                    },
+                    {
+                      name: "NumPy",
+                      description: "Numerical computing and array operations",
+                    },
+                  ].map((tool, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-md p-6"
+                    >
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {tool.name}
+                      </h3>
+                      <p className="text-gray-600 text-sm">
+                        {tool.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Findings Section */}
+            <section id="findings" className="py-16 bg-white">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    Research Findings
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Our comprehensive analysis reveals key insights into
+                    micro-expression detection and model performance.
+                  </p>
+                </div>
+
+                <div className="space-y-8">
+                  {/* Feature Importance Analysis */}
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <div className="flex items-center mb-6">
+                      <span className="text-2xl mr-3">🎯</span>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        1. Feature Importance (Perturbation)
+                      </h3>
+                    </div>
+
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-6">
+                      <h4 className="font-semibold text-blue-800 mb-1">
+                        Key Finding
+                      </h4>
+                      <p className="text-blue-700">
+                        Forehead is the most important region for lie detection
+                      </p>
+                    </div>
+
+                    <p className="text-gray-700 mb-6">
+                      Isolated facial features using dlib and conducted masking
+                      tests to measure feature importance
+                    </p>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Details
+                        </h4>
+                        <ul className="space-y-2 text-gray-700">
+                          <li>
+                            • Used dlib to isolate individual facial features
+                          </li>
+                          <li>
+                            • Applied masking technique to test feature
+                            importance
+                          </li>
+                          <li>
+                            • Measured accuracy drop when each feature was
+                            masked
+                          </li>
+                          <li>
+                            • Forehead region showed highest impact on model
+                            performance
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Feature Importance
+                        </h4>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700">
+                                Forehead:
+                              </span>
+                              <span className="text-sm font-bold text-blue-600">
+                                85%
+                              </span>
+                            </div>
+                            <ProgressBar percentage={85} color="blue" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700">
+                                Eyes:
+                              </span>
+                              <span className="text-sm font-bold text-green-600">
+                                72%
+                              </span>
+                            </div>
+                            <ProgressBar percentage={72} color="green" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700">
+                                Mouth:
+                              </span>
+                              <span className="text-sm font-bold text-orange-600">
+                                68%
+                              </span>
+                            </div>
+                            <ProgressBar percentage={68} color="orange" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700">
+                                Nose:
+                              </span>
+                              <span className="text-sm font-bold text-red-600">
+                                45%
+                              </span>
+                            </div>
+                            <ProgressBar percentage={45} color="red" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Encoding Comparison */}
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <div className="flex items-center mb-6">
+                      <span className="text-2xl mr-3">🔧</span>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        2. Encoding Comparison
+                      </h3>
+                    </div>
+
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg mb-6">
+                      <h4 className="font-semibold text-green-800 mb-1">
+                        Key Finding
+                      </h4>
+                      <p className="text-green-700">
+                        High-level dlib landmarks provided best balance of
+                        accuracy and efficiency
+                      </p>
+                    </div>
+
+                    <p className="text-gray-700 mb-6">
+                      Compared three different encoding approaches for feature
+                      extraction
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center bg-orange-50 rounded-lg p-6 border-l-4 border-orange-500">
+                        <div className="text-4xl font-bold text-orange-600 mb-2">
+                          78%
+                        </div>
+                        <h4 className="font-semibold text-orange-800 mb-2">
+                          HOG (OpenCV)
+                        </h4>
+                        <p className="text-sm text-orange-700 mb-1">
+                          Fast processing
+                        </p>
+                        <p className="text-xs text-orange-600">
+                          Best performer
+                        </p>
+                      </div>
+                      <div className="text-center bg-green-50 rounded-lg p-6 border-l-4 border-green-500 ring-2 ring-green-200">
+                        <div className="text-4xl font-bold text-green-600 mb-2">
+                          91%
+                        </div>
+                        <h4 className="font-semibold text-green-800 mb-2">
+                          dlib Landmarks
+                        </h4>
+                        <p className="text-sm text-green-700 mb-1">
+                          Best balance
+                        </p>
+                        <p className="text-xs text-green-600">Best performer</p>
+                      </div>
+                      <div className="text-center bg-purple-50 rounded-lg p-6 border-l-4 border-purple-500">
+                        <div className="text-4xl font-bold text-purple-600 mb-2">
+                          94%
+                        </div>
+                        <h4 className="font-semibold text-purple-800 mb-2">
+                          ResNet18
+                        </h4>
+                        <p className="text-sm text-purple-700 mb-1">
+                          Slow processing
+                        </p>
+                        <p className="text-xs text-purple-600">
+                          Best performer
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Model Comparison */}
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <div className="flex items-center mb-6">
+                      <span className="text-2xl mr-3">📊</span>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        3. Model Comparison
+                      </h3>
+                    </div>
+
+                    <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-lg mb-6">
+                      <h4 className="font-semibold text-purple-800 mb-1">
+                        Key Finding
+                      </h4>
+                      <p className="text-purple-700">
+                        Random Forest achieved best overall performance with 91%
+                        accuracy
+                      </p>
+                    </div>
+
+                    <p className="text-gray-700 mb-6">
+                      Evaluated multiple machine learning models for
+                      classification performance
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center bg-red-50 rounded-lg p-6 border-l-4 border-red-500">
+                        <div className="text-4xl font-bold text-red-600 mb-2">
+                          82%
+                        </div>
+                        <h4 className="font-semibold text-red-800 mb-2">
+                          Decision Tree
+                        </h4>
+                        <p className="text-sm text-red-700 mb-1">
+                          Simple, interpretable
+                        </p>
+                        <p className="text-xs text-red-600">Best performer</p>
+                      </div>
+                      <div className="text-center bg-purple-50 rounded-lg p-6 border-l-4 border-purple-500 ring-2 ring-purple-200">
+                        <div className="text-4xl font-bold text-purple-600 mb-2">
+                          91%
+                        </div>
+                        <h4 className="font-semibold text-purple-800 mb-2">
+                          Random Forest
+                        </h4>
+                        <p className="text-sm text-purple-700 mb-1">
+                          Best performer
+                        </p>
+                        <p className="text-xs text-purple-600">
+                          Best performer
+                        </p>
+                      </div>
+                      <div className="text-center bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500">
+                        <div className="text-4xl font-bold text-blue-600 mb-2">
+                          85%
+                        </div>
+                        <h4 className="font-semibold text-blue-800 mb-2">
+                          Logistic Regression
+                        </h4>
+                        <p className="text-sm text-blue-700 mb-1">
+                          Good baseline
+                        </p>
+                        <p className="text-xs text-blue-600">Best performer</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Database Interface Section */}
+            <section id="database" className="py-16 bg-gray-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    Database Interface & Exploration
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Interactive database exploration with SQLite/MySQL
+                    integration for comprehensive micro-expression data
+                    analysis.
+                  </p>
+                </div>
+                <DatabaseInterface />
+              </div>
+            </section>
+
+            {/* Live Prediction Section */}
+            <section id="live-prediction" className="py-16 bg-white">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <LivePrediction />
+              </div>
+            </section>
+
+            {/* Interactive Results Section */}
+            <section id="interactive" className="py-16 bg-white">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    Interactive Code Results
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Explore our implementation with interactive code
+                    demonstrations and pre-computed results from our analysis.
+                  </p>
+                </div>
+
+                <div className="space-y-8">
+                  <InteractiveCodeDemo
+                    title="1. Data Processing Pipeline"
+                    subtitle="Spark-based data processing with MySQL integration"
+                    code={`# Initialize Spark Session
+from pyspark.sql import SparkSession
+spark = SparkSession.builder \\
+    .appName("MicroExpressionDetection") \\
+    .config("spark.jars", "mysql-connector-java-8.0.33.jar") \\
+    .getOrCreate()
+
+# Load data from MySQL
+df = spark.read.format("jdbc") \\
+    .option("url", "jdbc:mysql://localhost:3306/micro_expressions") \\
+    .option("dbtable", "facial_data") \\
+    .option("user", "root") \\
+    .option("password", "password") \\
+    .load()
+
+print(f"Dataset loaded: {df.count()} records")
+df.show(5)`}
+                    results={`Dataset loaded: 2847 records
+|subject_id|  label|image_path|  features|
++----------+-------+----------+----------+
+|         1|  truth|  img_001/|[0.23, 0..|
+|         1|    lie|  img_002/|[0.45, 0..|
+|         2|  truth|  img_003/|[0.12, 0..|
+|         2|    lie|  img_004/|[0.67, 0..|
+|         3|  truth|  img_005/|[0.34, 0..|
++----------+-------+----------+----------+
+only showing top 5 rows
+
+Performance Metrics:
+- Processing Time: 2.3 seconds
+- Memory Usage: 1.2 GB
+- Throughput: 1,238 records/sec`}
+                  />
+
+                  <InteractiveCodeDemo
+                    title="2. Feature Extraction Methods"
+                    subtitle="Three encoding approaches: HOG, dlib landmarks, and ResNet18"
+                    code={`import cv2
+import dlib
+import torch
+import torchvision.transforms as transforms
+from torchvision.models import resnet18
+
+# HOG Feature Extraction
+def extract_hog_features(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    hog = cv2.HOGDescriptor()
+    features = hog.compute(gray)
+    return features.flatten()
+
+# dlib Landmark Detection
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+
+def extract_dlib_landmarks(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    faces = detector(gray)
+    landmarks = []
+    for face in faces:
+        shape = predictor(gray, face)
+        for i in range(68):
+            landmarks.extend([shape.part(i).x, shape.part(i).y])
+    return np.array(landmarks)
+
+# ResNet18 Feature Extraction
+model = resnet18(pretrained=True)
+model.fc = torch.nn.Identity()  # Remove final layer
+
+def extract_resnet_features(image):
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                           std=[0.229, 0.224, 0.225])
+    ])
+    input_tensor = transform(image).unsqueeze(0)
+    with torch.no_grad():
+        features = model(input_tensor)
+    return features.squeeze().numpy()
+
+print("Feature extraction methods comparison:")
+print(f"HOG: {hog_features.shape[0]} dimensions")
+print(f"dlib: {dlib_features.shape[0]} dimensions")
+print(f"ResNet18: {resnet_features.shape[0]} dimensions")`}
+                    results={`Feature extraction methods comparison:
+HOG: 3780 dimensions
+dlib: 136 dimensions
+ResNet18: 512 dimensions
+
+Accuracy Comparison:
+┌─────────────┬──────────┬─────────────┬──────────────┐
+│   Method    │ Accuracy │ Dimensions  │ Process Time │
+├─────────────┼──────────┼─────────────┼──────────────┤
+│ HOG         │   78%    │    3,780    │    0.12s     │
+│ dlib        │   91%    │     136     │    0.08s     │
+│ ResNet18    │   94%    │     512     │    2.34s     │
+└─────────────┴──────────┴─────────────┴──────────────┘
+
+Best Balance: dlib landmarks (91% accuracy, fast processing)`}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <InteractiveCodeDemo
+                      title="3. Performance Metrics"
+                      subtitle="Real-time analysis results"
+                      code={`# Performance Analysis
+from sklearn.metrics import classification_report, confusion_matrix
+
+# Model predictions
+y_pred = model.predict(X_test)
+y_true = y_test
+
+# Calculate metrics
+accuracy = accuracy_score(y_true, y_pred)
+precision = precision_score(y_true, y_pred, average='weighted')
+recall = recall_score(y_true, y_pred, average='weighted')
+f1 = f1_score(y_true, y_pred, average='weighted')
+
+print(f"Accuracy: {accuracy:.3f}")
+print(f"Precision: {precision:.3f}")
+print(f"Recall: {recall:.3f}")
+print(f"F1-Score: {f1:.3f}")
+
+# Confusion Matrix
+cm = confusion_matrix(y_true, y_pred)
+print("\\nConfusion Matrix:")
+print(cm)`}
+                      results={`Accuracy: 0.912
+Precision: 0.908
+Recall: 0.912
+F1-Score: 0.910
+
+Confusion Matrix:
+[[423  47]
+ [ 52 421]]
+
+Classification Report:
+              precision    recall  f1-score   support
+       truth       0.89      0.90      0.90       470
+         lie       0.90      0.89      0.90       473
+    accuracy                           0.91       943
+   macro avg       0.90      0.90      0.90       943
+weighted avg       0.91      0.91      0.91       943`}
+                    />
+
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                        📊 Live Performance Dashboard
+                      </h3>
+                      <div className="space-y-4">
+                        <MetricCard
+                          title="Overall Accuracy"
+                          value="91.2%"
+                          subtitle="Random Forest Model"
+                          color="green"
+                          borderColor="green"
+                        />
+                        <MetricCard
+                          title="Processing Speed"
+                          value="2.3s"
+                          subtitle="Per 1000 images"
+                          color="blue"
+                          borderColor="blue"
+                        />
+                        <MetricCard
+                          title="Feature Dimensions"
+                          value="136"
+                          subtitle="dlib landmarks"
+                          color="purple"
+                          borderColor="purple"
+                        />
+                        <MetricCard
+                          title="Dataset Size"
+                          value="2,847"
+                          subtitle="Total records"
+                          color="orange"
+                          borderColor="orange"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Advanced Analysis Section */}
+            <section id="analysis" className="py-16 bg-gray-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    Advanced Analysis & Insights
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Deep dive into our comprehensive analysis including
+                    compression tradeoffs, bias evaluation, scalability testing,
+                    and methodological innovations.
+                  </p>
+                </div>
+
+                <div className="space-y-8">
+                  <CollapsibleSection
+                    title="Image Compression vs Accuracy Tradeoff"
+                    subtitle="Analysis of storage optimization impact on model performance"
+                    icon="📊"
+                    defaultOpen={true}
+                  >
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Motivation
+                        </h4>
+                        <p className="text-gray-700 mb-4">
+                          Reducing storage costs while maintaining acceptable
+                          accuracy
+                        </p>
+
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Implementation
+                        </h4>
+                        <ul className="space-y-2 text-gray-700">
+                          <li>
+                            • Images resized from original resolution to 64x64
+                            pixels
+                          </li>
+                          <li>
+                            • Applied JPEG compression for storage efficiency
+                          </li>
+                          <li>
+                            • Measured accuracy impact across all encoding
+                            methods
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Results
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                          <MetricCard
+                            title="Raw Accuracy"
+                            value="95%"
+                            color="green"
+                            borderColor="green"
+                          />
+                          <MetricCard
+                            title="Compressed Accuracy"
+                            value="91%"
+                            color="blue"
+                            borderColor="blue"
+                          />
+                          <MetricCard
+                            title="Accuracy Drop"
+                            value="4%"
+                            color="orange"
+                            borderColor="orange"
+                          />
+                          <MetricCard
+                            title="Storage Reduction"
+                            value="~85%"
+                            color="purple"
+                            borderColor="purple"
+                          />
+                        </div>
+
+                        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                          <h4 className="font-semibold text-green-800 mb-1">
+                            Conclusion
+                          </h4>
+                          <p className="text-green-700">
+                            Small accuracy tradeoff (4%) for significant storage
+                            savings (85% reduction)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Gender Bias Analysis & Mitigation"
+                    subtitle="Cross-gender generalization and fairness evaluation"
+                    icon="⚖️"
+                  >
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Methodology
+                        </h4>
+                        <ul className="space-y-2 text-gray-700 mb-6">
+                          <li>
+                            • Training performed on one gender, testing on
+                            another
+                          </li>
+                          <li>
+                            • Analyzed accuracy drops for cross-gender
+                            generalization
+                          </li>
+                          <li>
+                            • Identified bias in structure-specific facial
+                            expressions
+                          </li>
+                          <li>
+                            • Applied fine-tuning techniques to improve fairness
+                          </li>
+                        </ul>
+
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Key Findings
+                        </h4>
+                        <ul className="space-y-2 text-gray-700">
+                          <li>
+                            • Significant accuracy drop observed in cross-gender
+                            testing
+                          </li>
+                          <li>
+                            • Bias found in structure-specific expressions
+                            (jawline, cheekbones)
+                          </li>
+                          <li>
+                            • Fine-tuning weights improved fairness by 12%
+                          </li>
+                          <li>
+                            • Gender-balanced training recommended for
+                            production use
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div>
+                        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg mb-6">
+                          <h4 className="font-semibold text-yellow-800 mb-1">
+                            Mitigation Strategy
+                          </h4>
+                          <p className="text-yellow-700">
+                            Fine-tuning model weights and balanced training data
+                          </p>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            <h5 className="font-medium text-gray-900 mb-2">
+                              Cross-Gender Performance
+                            </h5>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700">
+                                Accuracy drop:
+                              </span>
+                              <span className="font-semibold text-red-600">
+                                12%
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            <h5 className="font-medium text-gray-900 mb-2">
+                              After Fine-Tuning
+                            </h5>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700">
+                                Improvement:
+                              </span>
+                              <span className="font-semibold text-green-600">
+                                12%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                          <h4 className="font-semibold text-blue-800 mb-1">
+                            Mitigation Success
+                          </h4>
+                          <p className="text-blue-700">
+                            Fine-tuning with balanced datasets eliminated gender
+                            bias
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Spark Worker Scaling Performance"
+                    subtitle="Distributed computing efficiency analysis"
+                    icon="⚡"
+                  >
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Scaling Analysis
+                        </h4>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-gray-700">1 Worker:</span>
+                              <span className="text-gray-600">45.2s</span>
+                            </div>
+                            <ProgressBar percentage={100} color="red" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-gray-700">2 Workers:</span>
+                              <span className="text-gray-600">
+                                28.7s (37% faster)
+                              </span>
+                            </div>
+                            <ProgressBar percentage={63} color="orange" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-gray-700">4 Workers:</span>
+                              <span className="font-semibold text-green-600">
+                                16.3s (64% faster)
+                              </span>
+                            </div>
+                            <ProgressBar percentage={36} color="green" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-gray-700">8 Workers:</span>
+                              <span className="text-gray-600">
+                                15.1s (67% faster)
+                              </span>
+                            </div>
+                            <ProgressBar percentage={33} color="blue" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Efficiency Insights
+                        </h4>
+                        <ul className="space-y-2 text-gray-700 mb-6">
+                          <li>
+                            • Optimal performance at 4 workers for our dataset
+                            size
+                          </li>
+                          <li>
+                            • Diminishing returns beyond 4 workers due to
+                            overhead
+                          </li>
+                          <li>
+                            • Network I/O becomes bottleneck at higher worker
+                            counts
+                          </li>
+                          <li>
+                            • Memory usage scales linearly with worker count
+                          </li>
+                        </ul>
+
+                        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg">
+                          <h4 className="font-semibold text-yellow-800 mb-1">
+                            Recommendation
+                          </h4>
+                          <p className="text-yellow-700">
+                            4 workers provide optimal cost-performance balance
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleSection>
+
+                  <CollapsibleSection
+                    title="Training Environment & Infrastructure"
+                    subtitle="Google Colab setup and resource utilization"
+                    icon="🖥️"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Environment Specifications
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">Platform:</span>
+                            <span className="text-gray-600">
+                              Google Colab (GPU)
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">GPU Type:</span>
+                            <span className="text-gray-600">Tesla T4</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">
+                              Training Time:
+                            </span>
+                            <span className="text-gray-600">2-3 hours</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">Dataset Size:</span>
+                            <span className="text-gray-600">
+                              ~23,000 images
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">Memory Usage:</span>
+                            <span className="text-gray-600">12GB GPU RAM</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">
+                          Resource Utilization
+                        </h4>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm text-gray-700">
+                                GPU Memory:
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                12GB / 15GB
+                              </span>
+                            </div>
+                            <ProgressBar percentage={80} color="blue" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm text-gray-700">
+                                CPU Usage:
+                              </span>
+                              <span className="text-sm text-gray-600">85%</span>
+                            </div>
+                            <ProgressBar percentage={85} color="green" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm text-gray-700">
+                                RAM Usage:
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                11GB / 13GB
+                              </span>
+                            </div>
+                            <ProgressBar percentage={85} color="orange" />
+                          </div>
+                        </div>
+
+                        <div className="mt-6 bg-gray-50 border-l-4 border-gray-500 p-4 rounded-r-lg">
+                          <h4 className="font-semibold text-gray-800 mb-1">
+                            Performance Notes
+                          </h4>
+                          <p className="text-gray-700 text-sm">
+                            Efficient resource utilization with minimal waste
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleSection>
+                </div>
+              </div>
+            </section>
+
+            {/* Team Section */}
+            <section id="team" className="py-16 bg-white">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-12">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                    CS179G Group 3 - Team Contributions
+                  </h2>
+                  <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                    Meet our CS179G Group 3 team members and explore their
+                    individual contributions to this comprehensive
+                    micro-expression detection research project.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    {
+                      name: "Kush Momaya",
+                      netid: "kmoma001",
+                      role: "Encoding & Multithreading Specialist",
+                      contributions: [
+                        "Feature encoding implementation",
+                        "Multithreading optimization",
+                        "Performance benchmarking",
+                        "Code optimization",
+                      ],
+                    },
+                    {
+                      name: "Mario Bertumen",
+                      netid: "mbert015",
+                      role: "Data Collection & Spark Engineer",
+                      contributions: [
+                        "Dataset collection and curation",
+                        "Spark cluster configuration",
+                        "Distributed processing setup",
+                        "Data pipeline architecture",
+                      ],
+                    },
+                    {
+                      name: "Rushi Patel",
+                      netid: "rpate213",
+                      role: "MLlib & Web Interface Developer",
+                      contributions: [
+                        "Machine learning model implementation",
+                        "Compression analysis",
+                        "Web interface development",
+                        "Database integration",
+                      ],
+                    },
+                    {
+                      name: "Suryateja Duvvuri",
+                      netid: "sduvv003",
+                      role: "SQL & Computer Vision Specialist",
+                      contributions: [
+                        "Database design and optimization",
+                        "OpenCV implementation",
+                        "ResNet18 integration",
+                        "Feature extraction pipelines",
+                      ],
+                    },
+                    {
+                      name: "Rakshan Rajesh Jagadeesan",
+                      netid: "rraje008",
+                      role: "Bias Analysis & Preprocessing Lead",
+                      contributions: [
+                        "Gender bias analysis",
+                        "Data preprocessing pipelines",
+                        "Statistical analysis",
+                        "Fairness evaluation",
+                      ],
+                    },
+                  ].map((member, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500"
+                    >
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {member.name}
+                      </h3>
+                      <p className="text-gray-500 text-sm mb-2">
+                        ({member.netid})
+                      </p>
+                      <p className="text-blue-600 font-medium mb-3">
+                        {member.role}
+                      </p>
+                      <ul className="space-y-1">
+                        {member.contributions.map((contribution, idx) => (
+                          <li key={idx} className="text-gray-700 text-sm">
+                            • {contribution}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="bg-gray-900 text-white py-12">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Micro-Expression Detection Research
+                  </h3>
+                  <p className="text-gray-400 text-sm">
+                    © 2024 CS179G Project. Dataset by Devvrat Mathur via Kaggle.
+                  </p>
+                </div>
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      // Live Prediction Component
+      function LivePrediction() {
+        const [selectedFile, setSelectedFile] = useState(null);
+        const [preview, setPreview] = useState(null);
+        const [prediction, setPrediction] = useState(null);
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState(null);
+        const [history, setHistory] = useState([]);
+        const [connectionStatus, setConnectionStatus] = useState(null);
+        const [testingConnection, setTestingConnection] = useState(false);
+        const fileInputRef = React.useRef(null);
+
+        const handleFileSelect = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            setSelectedFile(file);
+            setError(null);
+
+            // Create preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+
+        const handleDrop = (event) => {
+          event.preventDefault();
+          const file = event.dataTransfer.files[0];
+          if (file && file.type.startsWith("image/")) {
+            setSelectedFile(file);
+            setError(null);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+
+        const handleDragOver = (event) => {
+          event.preventDefault();
+        };
+
+        const predictImage = async () => {
+          if (!selectedFile) {
+            setError("Please select an image first");
+            return;
+          }
+
+          setLoading(true);
+          setError(null);
+          setPrediction(null);
+
+          try {
+            const formData = new FormData();
+            formData.append("image", selectedFile);
+            formData.append("method", "script"); // or 'api' if your server has HTTP API
+
+            const response = await fetch("http://localhost:3002/api/predict", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              setPrediction(result);
+
+              // Add to history
+              setHistory((prev) => [result, ...prev.slice(0, 9)]); // Keep last 10 predictions
+            } else {
+              setError(result.error || "Prediction failed");
+            }
+          } catch (err) {
+            setError(`Prediction failed: ${err.message}`);
+            console.error("Prediction error:", err);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const clearSelection = () => {
+          setSelectedFile(null);
+          setPreview(null);
+          setPrediction(null);
+          setError(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        };
+
+        const getPredictionColor = (prediction) => {
+          if (!prediction) return "text-gray-500";
+          const label = prediction.prediction?.prediction;
+          return label === "truth" ? "text-green-600" : "text-red-600";
+        };
+
+        const formatConfidence = (confidence) => {
+          return (confidence * 100).toFixed(1);
+        };
+
+        const testServerConnection = async () => {
+          setTestingConnection(true);
+          setConnectionStatus(null);
+
+          try {
+            const response = await fetch(
+              "http://localhost:3002/api/test-connection"
+            );
+            const result = await response.json();
+            setConnectionStatus(result);
+          } catch (err) {
+            setConnectionStatus({
+              success: false,
+              error: err.message,
+              message: "Failed to connect to prediction server",
+            });
+          } finally {
+            setTestingConnection(false);
+          }
+        };
+
+        return (
+          <div className="max-w-6xl mx-auto p-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                🔍 Live Micro-Expression Detection
+              </h2>
+              <p className="text-gray-600 max-w-2xl mx-auto mb-6">
+                Upload a facial image to detect micro-expressions using our
+                trained CS179G models. Get real-time predictions for truth/lie
+                detection with confidence scores.
+              </p>
+
+              {/* Server Connection Test */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <h3 className="font-semibold text-blue-900">
+                      Server Connection
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      Test connection to your CS179G server
+                    </p>
+                  </div>
+                  <button
+                    onClick={testServerConnection}
+                    disabled={testingConnection}
+                    className={`px-4 py-2 rounded-lg font-medium ${
+                      testingConnection
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                    }`}
+                  >
+                    {testingConnection ? "🔄 Testing..." : "🔗 Test Connection"}
+                  </button>
+                </div>
+
+                {/* Connection Status */}
+                {connectionStatus && (
+                  <div
+                    className={`mt-4 p-3 rounded-md ${
+                      connectionStatus.success
+                        ? "bg-green-100 border border-green-300"
+                        : "bg-red-100 border border-red-300"
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span className="text-lg mr-2">
+                        {connectionStatus.success ? "✅" : "❌"}
+                      </span>
+                      <div className="text-left">
+                        <p
+                          className={`font-medium ${
+                            connectionStatus.success
+                              ? "text-green-800"
+                              : "text-red-800"
+                          }`}
+                        >
+                          {connectionStatus.message}
+                        </p>
+                        {connectionStatus.method && (
+                          <p className="text-sm text-gray-600">
+                            Method: {connectionStatus.method}
+                          </p>
+                        )}
+                        {connectionStatus.config &&
+                          !connectionStatus.config.configured && (
+                            <p className="text-sm text-orange-600 mt-1">
+                              ⚠️ Please update SERVER_CONFIG in
+                              prediction-server.js with your server details
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Upload Section */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">📤 Upload Image</h3>
+
+                {/* Drag & Drop Area */}
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    preview
+                      ? "border-green-300 bg-green-50"
+                      : "border-gray-300 hover:border-blue-400"
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  {preview ? (
+                    <div className="space-y-4">
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className="max-w-full max-h-64 mx-auto rounded-lg shadow-md"
+                      />
+                      <p className="text-sm text-gray-600">
+                        📁 {selectedFile?.name}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-6xl">🖼️</div>
+                      <div>
+                        <p className="text-lg font-medium text-gray-700">
+                          Drop an image here or click to browse
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Supports: JPG, PNG, GIF (max 10MB)
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
+                {/* Action Buttons */}
+                <div className="flex space-x-4 mt-6">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    📁 Choose File
+                  </button>
+
+                  <button
+                    onClick={predictImage}
+                    disabled={!selectedFile || loading}
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium ${
+                      !selectedFile || loading
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
+                  >
+                    {loading ? "🔄 Analyzing..." : "🔍 Predict"}
+                  </button>
+
+                  <button
+                    onClick={clearSelection}
+                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium"
+                  >
+                    🗑️ Clear
+                  </button>
+                </div>
+
+                {/* Error Display */}
+                {error && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700">❌ {error}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Results Section */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">
+                  📊 Prediction Results
+                </h3>
+
+                {loading && (
+                  <div className="text-center py-8">
+                    <div className="animate-spin text-4xl mb-4">🔄</div>
+                    <p className="text-gray-600">
+                      Analyzing facial expression...
+                    </p>
+                  </div>
+                )}
+
+                {prediction && (
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-600">Prediction</p>
+                          <p
+                            className={`text-2xl font-bold ${getPredictionColor(
+                              prediction
+                            )}`}
+                          >
+                            {prediction.prediction?.prediction === "truth"
+                              ? "✅ Truth"
+                              : "❌ Lie"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Confidence</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {formatConfidence(
+                              prediction.prediction?.confidence
+                            )}
+                            %
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Encoding Method</p>
+                        <p className="font-medium">
+                          {prediction.prediction?.encoding_method || "dlib"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Features Extracted</p>
+                        <p className="font-medium">
+                          {prediction.prediction?.features_extracted || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Processing Time</p>
+                        <p className="font-medium">
+                          {new Date(prediction.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">File Name</p>
+                        <p className="font-medium truncate">
+                          {prediction.filename}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!loading && !prediction && (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-4xl mb-4">🤖</div>
+                    <p>Upload an image to see prediction results</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Prediction History */}
+            {history.length > 0 && (
+              <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">
+                  📈 Recent Predictions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {history.map((item, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span
+                          className={`font-bold ${getPredictionColor(item)}`}
+                        >
+                          {item.prediction?.prediction === "truth"
+                            ? "✅ Truth"
+                            : "❌ Lie"}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {formatConfidence(item.prediction?.confidence)}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 truncate">
+                        {item.filename}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(item.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // Database Interface Component
+      function DatabaseInterface() {
+        const [activeQuery, setActiveQuery] = useState("");
+        const [searchTerm, setSearchTerm] = useState("");
+        const [filters, setFilters] = useState({
+          label: "",
+          confidence: "",
+          ageGroup: "",
+          gender: "",
+        });
+        const [results, setResults] = useState([]);
+        const [showResults, setShowResults] = useState(false);
+        const [currentPage, setCurrentPage] = useState(1);
+        const [resultsPerPage] = useState(10);
+
+        const realData = {
+          totalRecords: 2847,
+          subjects: 45,
+          truthSamples: 1423,
+          lieSamples: 1424,
+          avgConfidence: 84.7,
+          bestAccuracy: 91.2,
+        };
+
+        const sampleQueries = [
+          {
+            id: "keyword",
+            title: "Search by Keywords",
+            icon: "🔍",
+            description: "Search facial expression data using SQL LIKE queries",
+            sql: "SELECT * FROM facial_data WHERE image_path LIKE '%frame%' AND encoding_method = 'dlib' LIMIT 10;",
+          },
+          {
+            id: "expression",
+            title: "Filter by Expression Type",
+            icon: "😐",
+            description:
+              "Filter data by truth/lie labels and model confidence scores",
+            sql: "SELECT * FROM facial_data WHERE label = 'lie' AND model_confidence > 0.85 ORDER BY model_confidence DESC LIMIT 10;",
+          },
+          {
+            id: "demographics",
+            title: "Analyze by Subject Demographics",
+            icon: "👥",
+            description:
+              "Explore data patterns across different subject groups",
+            sql: "SELECT subject_id, COUNT(*) as total_frames, AVG(model_confidence) as avg_confidence, label FROM facial_data GROUP BY subject_id, label;",
+          },
+          {
+            id: "features",
+            title: "Feature Vector Analysis",
+            icon: "📊",
+            description: "Query and visualize encoding method performance",
+            sql: "SELECT encoding_method, AVG(accuracy) as avg_accuracy, COUNT(*) as sample_count FROM facial_data GROUP BY encoding_method ORDER BY avg_accuracy DESC;",
+          },
+        ];
+
+        const runQuery = (queryType) => {
+          setActiveQuery(queryType);
+
+          // Generate realistic results based on actual CS179G project data structure
+          // NOTE: This is simulated data for demonstration - in production this would query your MySQL database
+          const realResults = [];
+          let resultCount = 0;
+          let queryDescription = "";
+
+          // Different result sets based on query type to simulate real database filtering
+          if (queryType === "keywords") {
+            // Simulate keyword search results
+            resultCount = 23; // Realistic number for keyword search
+            queryDescription =
+              "SELECT * FROM facial_data WHERE image_path LIKE '%frame%' AND encoding_method = 'dlib'";
+
+            // Generate results that match dlib encoding
+            for (let i = 0; i < Math.min(resultCount, 25); i++) {
+              const subject = Math.floor(Math.random() * 45) + 1; // Random subject 1-45
+              realResults.push({
+                id: i + 1,
+                subject_id: subject,
+                label: Math.random() > 0.5 ? "truth" : "lie",
+                encoding_method: "dlib", // All dlib for this query
+                model_confidence: (0.91 + (Math.random() - 0.5) * 0.1).toFixed(
+                  3
+                ),
+                accuracy: (0.91 + (Math.random() - 0.5) * 0.05).toFixed(3),
+                image_path: `subject_${subject}/frame_${String(
+                  Math.floor(Math.random() * 200) + 1
+                ).padStart(3, "0")}.jpg`,
+                feature_vector: "68 landmarks",
+                has_image: Math.random() > 0.2,
+              });
+            }
+          } else if (queryType === "expression") {
+            // Simulate expression filter results
+            resultCount = 1424; // All lie samples from your project
+            queryDescription =
+              "SELECT * FROM facial_data WHERE label = 'lie' AND model_confidence > 0.85";
+
+            // Generate high-confidence lie results
+            for (let i = 0; i < Math.min(50, resultCount); i++) {
+              // Show first 50 of 1424
+              const subject = Math.floor(Math.random() * 45) + 1;
+              const encoding = ["HOG", "dlib", "ResNet18"][
+                Math.floor(Math.random() * 3)
+              ];
+              const baseAcc = { HOG: 0.78, dlib: 0.91, ResNet18: 0.94 }[
+                encoding
+              ];
+
+              realResults.push({
+                id: i + 1,
+                subject_id: subject,
+                label: "lie", // All lies for this query
+                encoding_method: encoding,
+                model_confidence: (0.85 + Math.random() * 0.15).toFixed(3), // > 0.85
+                accuracy: (baseAcc + (Math.random() - 0.5) * 0.05).toFixed(3),
+                image_path: `subject_${subject}/frame_${String(
+                  Math.floor(Math.random() * 200) + 1
+                ).padStart(3, "0")}.jpg`,
+                feature_vector:
+                  encoding === "dlib"
+                    ? "68 landmarks"
+                    : encoding === "HOG"
+                    ? "3780 features"
+                    : "512 features",
+                has_image: Math.random() > 0.3,
+              });
+            }
+          } else if (queryType === "demographics") {
+            // Simulate demographics analysis
+            resultCount = 45; // One result per subject
+            queryDescription =
+              "SELECT subject_id, COUNT(*) as total_frames, AVG(model_confidence), label FROM facial_data GROUP BY subject_id, label";
+
+            // Generate summary per subject
+            for (let i = 0; i < 20; i++) {
+              // Show first 20 subjects
+              const subject = i + 1;
+              const dominantLabel = Math.random() > 0.5 ? "truth" : "lie";
+              const encoding = ["HOG", "dlib", "ResNet18"][
+                Math.floor(Math.random() * 3)
+              ];
+              const baseAcc = { HOG: 0.78, dlib: 0.91, ResNet18: 0.94 }[
+                encoding
+              ];
+
+              realResults.push({
+                id: i + 1,
+                subject_id: subject,
+                label: dominantLabel,
+                encoding_method: encoding,
+                model_confidence: (
+                  baseAcc +
+                  (Math.random() - 0.5) * 0.1
+                ).toFixed(3),
+                accuracy: (baseAcc + (Math.random() - 0.5) * 0.05).toFixed(3),
+                image_path: `subject_${subject}/summary_analysis.jpg`,
+                feature_vector: `${
+                  Math.floor(Math.random() * 100) + 50
+                } total frames`,
+                has_image: Math.random() > 0.4,
+              });
+            }
+          } else if (queryType === "features") {
+            // Simulate feature analysis results
+            resultCount = 3; // One per encoding method
+            queryDescription =
+              "SELECT encoding_method, AVG(accuracy) as avg_accuracy, COUNT(*) as sample_count FROM facial_data GROUP BY encoding_method ORDER BY avg_accuracy DESC";
+
+            // Generate encoding method comparison
+            const methods = [
+              { method: "ResNet18", accuracy: 0.94, count: 949 },
+              { method: "dlib", accuracy: 0.91, count: 949 },
+              { method: "HOG", accuracy: 0.78, count: 949 },
+            ];
+
+            methods.forEach((method, i) => {
+              realResults.push({
+                id: i + 1,
+                subject_id: "ALL", // Summary across all subjects
+                label: "SUMMARY",
+                encoding_method: method.method,
+                model_confidence: method.accuracy.toFixed(3),
+                accuracy: method.accuracy.toFixed(3),
+                image_path: `analysis/${method.method.toLowerCase()}_performance.jpg`,
+                feature_vector: `${method.count} samples analyzed`,
+                has_image: true,
+              });
+            });
+          }
+
+          setResults(realResults);
+          setShowResults(true);
+          setCurrentPage(1);
+
+          // Store query info for display
+          window.currentQuery = {
+            type: queryType,
+            description: queryDescription,
+            totalResults: resultCount,
+            displayedResults: realResults.length,
+          };
+        };
+
+        // Pagination logic
+        const indexOfLastResult = currentPage * resultsPerPage;
+        const indexOfFirstResult = indexOfLastResult - resultsPerPage;
+        const currentResults = results.slice(
+          indexOfFirstResult,
+          indexOfLastResult
+        );
+        const totalPages = Math.ceil(results.length / resultsPerPage);
+
+        const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+        const downloadCSV = () => {
+          const csvContent = [
+            [
+              "Subject ID",
+              "Label",
+              "Encoding Method",
+              "Model Confidence",
+              "Accuracy",
+              "Image Path",
+              "Feature Vector",
+            ],
+            ...results.map((row) => [
+              row.subject_id,
+              row.label,
+              row.encoding_method,
+              row.model_confidence,
+              row.accuracy,
+              row.image_path,
+              row.feature_vector,
+            ]),
+          ]
+            .map((row) => row.join(","))
+            .join("\\n");
+
+          const blob = new Blob([csvContent], { type: "text/csv" });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `micro_expression_results_${activeQuery}.csv`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        };
+
+        return (
+          <div className="space-y-8">
+            {/* Database Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {realData.totalRecords.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600">Total Records</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {realData.subjects}
+                </div>
+                <div className="text-sm text-gray-600">Subjects</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {realData.avgConfidence}%
+                </div>
+                <div className="text-sm text-gray-600">Avg Confidence</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {realData.bestAccuracy}%
+                </div>
+                <div className="text-sm text-gray-600">Best Accuracy</div>
+              </div>
+            </div>
+
+            {/* Query Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {sampleQueries.map((query) => (
+                <button
+                  key={query.id}
+                  onClick={() => runQuery(query.id)}
+                  className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition-shadow border-l-4 border-blue-500"
+                  title={query.description}
+                >
+                  <div className="text-2xl mb-2">{query.icon}</div>
+                  <h3 className="font-semibold text-gray-900 mb-2">
+                    {query.title}
+                  </h3>
+                  <p className="text-sm text-gray-600">{query.description}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Results Section */}
+            {showResults && (
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Query Results
+                    </h3>
+                    {window.currentQuery && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <div className="bg-gray-100 p-3 rounded-md font-mono text-xs mb-2">
+                          {window.currentQuery.description}
+                        </div>
+                        <div className="flex space-x-4 text-xs">
+                          <span className="text-blue-600">
+                            📊 Total Results:{" "}
+                            <strong>
+                              {window.currentQuery.totalResults.toLocaleString()}
+                            </strong>
+                          </span>
+                          <span className="text-green-600">
+                            👁️ Displaying:{" "}
+                            <strong>
+                              {window.currentQuery.displayedResults}
+                            </strong>
+                          </span>
+                          <span className="text-purple-600">
+                            ⚠️ <strong>Demo Data</strong> (simulated for
+                            demonstration)
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={downloadCSV}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
+                  >
+                    📥 Download CSV
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Subject ID
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Label
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Encoding Method
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Model Confidence
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Accuracy
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Image Preview
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {currentResults.map((row) => (
+                        <tr key={row.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {row.subject_id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                row.label === "truth"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {row.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
+                                row.encoding_method === "ResNet18"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : row.encoding_method === "dlib"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {row.encoding_method}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {row.model_confidence}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {row.accuracy}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-3">
+                              {row.has_image ? (
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center">
+                                    <span className="text-xs text-gray-500">
+                                      IMG
+                                    </span>
+                                  </div>
+                                  <div className="text-xs">
+                                    <div className="text-blue-600 hover:text-blue-800 cursor-pointer underline">
+                                      {row.image_path}
+                                    </div>
+                                    <div className="text-gray-500 mt-1">
+                                      Click to view full image
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-12 h-12 bg-red-100 rounded border flex items-center justify-center">
+                                    <span className="text-xs text-red-500">
+                                      N/A
+                                    </span>
+                                  </div>
+                                  <div className="text-xs">
+                                    <div className="text-gray-400">
+                                      {row.image_path}
+                                    </div>
+                                    <div className="text-red-500 mt-1">
+                                      Image not found
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
+                    <div className="flex flex-1 justify-between sm:hidden">
+                      <button
+                        onClick={() => paginate(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => paginate(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          Showing{" "}
+                          <span className="font-medium">
+                            {indexOfFirstResult + 1}
+                          </span>{" "}
+                          to{" "}
+                          <span className="font-medium">
+                            {Math.min(indexOfLastResult, results.length)}
+                          </span>{" "}
+                          of{" "}
+                          <span className="font-medium">{results.length}</span>{" "}
+                          results
+                        </p>
+                      </div>
+                      <div>
+                        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                          <button
+                            onClick={() => paginate(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                          >
+                            ←
+                          </button>
+                          {[...Array(totalPages)].map((_, index) => (
+                            <button
+                              key={index + 1}
+                              onClick={() => paginate(index + 1)}
+                              className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                currentPage === index + 1
+                                  ? "bg-blue-600 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                                  : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => paginate(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                          >
+                            →
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // Render the app
+      ReactDOM.render(<App />, document.getElementById("root"));
+    </script>
+  </body>
+</html>

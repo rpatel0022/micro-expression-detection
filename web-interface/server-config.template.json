@@ -1,0 +1,17 @@
+{
+  "host": "YOUR_SERVER_IP_HERE",
+  "port": 22,
+  "username": "cs179g",
+  "pythonPath": "/usr/bin/python3",
+  "projectPath": "/home/cs179g",
+  "apiPort": 5000,
+  "apiEndpoint": "/predict",
+  "modelFile": "balanced_model.pth",
+  "landmarksFile": "shape_predictor_68_face_landmarks.dat",
+  "connectionMethod": "ssh",
+  "notes": {
+    "setup": "Copy this file to server-config.json and update with your actual server IP",
+    "security": "Never commit server-config.json to git - keep it private",
+    "modelFormat": "PyTorch .pth format detected on server"
+  }
+}
