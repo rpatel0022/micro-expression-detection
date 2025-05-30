@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/micro-expression-detection/static/css/main.d0485da7.css",
-    "main.js": "/micro-expression-detection/static/js/main.c5bfd5f8.js",
+    "main.js": "/micro-expression-detection/static/js/main.bfb09c0e.js",
     "index.html": "/micro-expression-detection/index.html",
     "main.d0485da7.css.map": "/micro-expression-detection/static/css/main.d0485da7.css.map",
-    "main.c5bfd5f8.js.map": "/micro-expression-detection/static/js/main.c5bfd5f8.js.map"
+    "main.bfb09c0e.js.map": "/micro-expression-detection/static/js/main.bfb09c0e.js.map"
   },
   "entrypoints": [
     "static/css/main.d0485da7.css",
-    "static/js/main.c5bfd5f8.js"
+    "static/js/main.bfb09c0e.js"
   ]
 }

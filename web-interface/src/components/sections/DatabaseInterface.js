@@ -22,7 +22,7 @@ const DatabaseInterface = () => {
 
     try {
       // Load data directly from JSON file
-      const response = await fetch('/data_base_file.json');
+      const response = await fetch('./data_base_file.json');
       const rawData = await response.json();
 
       // Transform the raw data to include all available fields
