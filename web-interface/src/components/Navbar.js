@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiMenu, FiX, FiDatabase, FiCpu, FiBarChart2, FiClock, FiCamera, FiSearch } from 'react-icons/fi';
+import { FiMenu, FiX, FiDatabase, FiCpu, FiCamera, FiSearch, FiShield } from 'react-icons/fi';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,8 +10,7 @@ const Navbar = () => {
     { id: 'database', label: 'Database', icon: FiDatabase },
     { id: 'dataset', label: 'Dataset', icon: FiSearch },
     { id: 'technologies', label: 'Technologies', icon: FiCpu },
-    { id: 'findings', label: 'Findings', icon: FiBarChart2 },
-    { id: 'runtime', label: 'Runtime', icon: FiClock },
+    { id: 'bias-analysis', label: 'Bias Analysis', icon: FiShield },
   ];
 
   const scrollToSection = (sectionId) => {

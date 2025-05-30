@@ -123,7 +123,7 @@ app.post('/predict-real', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'No image file provided' });
     }
 
-    const selectedMethods = req.body.methods ? JSON.parse(req.body.methods) : ['dlib_rf', 'hog_dt', 'resnet_lr'];
+    const selectedMethods = req.body.methods ? JSON.parse(req.body.methods) : ['dlib_rf', 'hog_dt', 'resnet_rf'];
     console.log('Processing image with Real CS179G models:', req.file.filename);
     console.log('Selected methods:', selectedMethods);
 
@@ -279,11 +279,11 @@ app.get('/database', (req, res) => {
       // Transform data to match expected format
       const transformedRows = rows.map(row => ({
         id: row.id || row.rowid,
-        filename: row.image_path || `subject_${row.subject_id}_frame.jpg`,
-        prediction: row.label === 'truth' ? 'Truthful' : 'Deceptive',
-        confidence: row.model_confidence || row.accuracy || 0.8,
-        encoding_method: row.encoding_method || 'dlib',
-        processing_time: row.processing_time || 2.1,
+        filename: row.image_path ? row.image_path.split('/').pop() : 'unknown.jpg',
+        prediction: row.prediction === 'truth' ? 'Truthful' : 'Deceptive',
+        confidence: row.confidence_score || 0.8,
+        encoding_method: row.encoding_type || 'low_level',
+        processing_time: row.performance_score ? (row.performance_score * 5).toFixed(1) : '2.1',
         created_at: row.created_at || new Date().toISOString()
       }));
 
@@ -301,11 +301,11 @@ app.get('/database/stats', (req, res) => {
   try {
     const queries = [
       'SELECT COUNT(*) as total_records FROM facial_data',
-      'SELECT COUNT(*) as truthful_count FROM facial_data WHERE label = "truth"',
-      'SELECT COUNT(*) as deceptive_count FROM facial_data WHERE label = "lie"',
-      'SELECT AVG(model_confidence) as avg_confidence FROM facial_data',
-      'SELECT AVG(processing_time) as avg_processing_time FROM facial_data WHERE processing_time IS NOT NULL',
-      'SELECT encoding_method, COUNT(*) as count FROM facial_data GROUP BY encoding_method'
+      'SELECT COUNT(*) as truthful_count FROM facial_data WHERE prediction = "truth"',
+      'SELECT COUNT(*) as deceptive_count FROM facial_data WHERE prediction = "lie"',
+      'SELECT AVG(confidence_score) as avg_confidence FROM facial_data',
+      'SELECT AVG(performance_score) as avg_processing_time FROM facial_data WHERE performance_score IS NOT NULL',
+      'SELECT encoding_type, COUNT(*) as count FROM facial_data GROUP BY encoding_type'
     ];
 
     Promise.all([

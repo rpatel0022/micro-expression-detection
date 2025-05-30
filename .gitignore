@@ -1,5 +1,3 @@
-# CS179G Micro-Expression Detection - Git Ignore
-
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -17,30 +15,39 @@ dist/
 .env.test.local
 .env.production.local
 
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
 # Database files
 *.db
 *.sqlite
 *.sqlite3
 
-# Server configuration (contains sensitive info)
-server-config.json
-server-files/server-config.json
-web-interface/server-config.json
-
-# Uploads and temporary files
-uploads/
+# Temporary files
+tmp/
 temp/
-*.tmp
+uploads/
 
-# Logs
-logs/
-*.log
-
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
+# Package manager files
+package-lock.json
+yarn.lock
 
 # Coverage directory used by tools like istanbul
 coverage/
@@ -87,67 +94,3 @@ jspm_packages/
 
 # DynamoDB Local files
 .dynamodb/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Machine Learning Models
-*.pkl
-*.pth
-*.h5
-*.model
-
-# Data files (keep structure, ignore large datasets)
-data/
-datasets/
-*.csv
-*.json
-!package*.json
-!*config*.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Backup files
-*.bak
-*.backup
-*.old
-
-# Compressed files
-*.zip
-*.tar.gz
-*.rar
-
-# Keep important config templates
-!*template*
-!*example*
-!docs/
-!README.md

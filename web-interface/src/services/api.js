@@ -71,7 +71,7 @@ export const apiService = {
   },
 
   // Upload and predict image with Real CS179G Models
-  async predictImageReal(imageFile, selectedMethods = ['dlib_rf', 'hog_dt', 'resnet_lr']) {
+  async predictImageReal(imageFile, selectedMethods = ['dlib_rf', 'hog_dt', 'resnet_rf']) {
     try {
       const formData = new FormData();
       formData.append('image', imageFile);
@@ -173,44 +173,51 @@ export const mockData = {
   databaseRecords: [
     {
       id: 1,
-      filename: "subject_001_frame_045.jpg",
+      filename: "Mansi04455.png",
       prediction: "Truthful",
-      confidence: 0.92,
-      encoding_method: "HOG",
-      processing_time: 1.8,
-      created_at: "2024-01-15 14:30:22"
+      confidence: 0.52,
+      encoding_method: "low_level",
+      processing_time: 2.0,
+      created_at: "2025-05-30T00:53:57.140Z"
     },
     {
       id: 2,
-      filename: "subject_002_frame_123.jpg",
-      prediction: "Deceptive",
-      confidence: 0.85,
-      encoding_method: "dlib",
-      processing_time: 2.1,
-      created_at: "2024-01-15 14:31:45"
+      filename: "Mansi04455.png",
+      prediction: "Truthful",
+      confidence: 0.52,
+      encoding_method: "low_level",
+      processing_time: 2.0,
+      created_at: "2025-05-30T00:53:57.140Z"
     },
     {
       id: 3,
-      filename: "subject_003_frame_067.jpg",
+      filename: "Mansi04455.png",
       prediction: "Truthful",
-      confidence: 0.78,
-      encoding_method: "ResNet18",
-      processing_time: 3.2,
-      created_at: "2024-01-15 14:32:10"
+      confidence: 0.52,
+      encoding_method: "low_level",
+      processing_time: 2.0,
+      created_at: "2025-05-30T00:53:57.140Z"
+    },
+    {
+      id: 4,
+      filename: "Mansi04455.png",
+      prediction: "Truthful",
+      confidence: 0.52,
+      encoding_method: "low_level",
+      processing_time: 2.0,
+      created_at: "2025-05-30T00:53:57.140Z"
     }
   ],
 
   databaseStats: {
-    total_records: 1247,
-    truthful_count: 623,
-    deceptive_count: 624,
-    avg_confidence: 0.84,
+    total_records: 4,
+    truthful_count: 4,
+    deceptive_count: 0,
+    avg_confidence: 0.52,
     encoding_methods: {
-      "HOG": 415,
-      "dlib": 416,
-      "ResNet18": 416
+      "low_level": 4
     },
-    avg_processing_time: 2.1
+    avg_processing_time: 2.0
   }
 };
 

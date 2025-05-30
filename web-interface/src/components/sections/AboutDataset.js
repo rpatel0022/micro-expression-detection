@@ -88,16 +88,29 @@ const AboutDataset = () => {
                 <FiFolder className="mr-2 text-primary-500" />
                 File Structure
               </h3>
-              <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm">
-                <div>📁 dataset/</div>
-                {dataset.creation.structure.folders.map((folder, index) => (
-                  <div key={index} className="ml-4">
-                    📁 {folder}
-                    <div className="ml-4 text-gray-400">
-                      🖼️ {dataset.creation.structure.fileFormat}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <img
+                  src="/images/file_structure.png"
+                  alt="Dataset File Structure"
+                  className="w-full h-auto"
+                  onError={(e) => {
+                    // Fallback to code structure if image doesn't load
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                {/* Fallback code structure */}
+                <div className="hidden bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm">
+                  <div>📁 dataset/</div>
+                  {dataset.creation.structure.folders.map((folder, index) => (
+                    <div key={index} className="ml-4">
+                      📁 {folder}
+                      <div className="ml-4 text-gray-400">
+                        🖼️ {dataset.creation.structure.fileFormat}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -139,7 +152,7 @@ const AboutDataset = () => {
                 <div className="bg-gray-200 rounded-lg overflow-hidden" style={{ height: '400px' }}>
                   {/* Actual demo images */}
                   <img
-                    src={selectedImage === 'truth' ? '/images/truth_demo.png' : '/images/lie_demo.png'}
+                    src={selectedImage === 'truth' ? dataset.sampleImages.truth : dataset.sampleImages.lie}
                     alt={selectedImage === 'truth' ? 'Truthful Expression Demo' : 'Deceptive Expression Demo'}
                     className="w-full h-full object-contain rounded-lg bg-white"
                     onError={(e) => {

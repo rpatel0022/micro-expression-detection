@@ -3,10 +3,9 @@ import './App.css';
 import Navbar from './components/Navbar';
 import AboutDataset from './components/sections/AboutDataset';
 import Technologies from './components/sections/Technologies';
-import Findings from './components/sections/Findings';
-import RuntimeAnalysis from './components/sections/RuntimeAnalysis';
 import LivePrediction from './components/sections/LivePrediction';
 import DatabaseInterface from './components/sections/DatabaseInterface';
+import BiasAnalysis from './components/sections/BiasAnalysis';
 
 function App() {
   return (
@@ -24,6 +23,7 @@ function App() {
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Advanced computer vision and machine learning techniques to detect
               deceptive micro-expressions in facial video data with 91% accuracy.
+              Includes comprehensive bias analysis and fairness measures for equitable performance across demographics.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -39,10 +39,10 @@ function App() {
                 Browse Database
               </button>
               <button
-                onClick={() => document.getElementById('findings').scrollIntoView({ behavior: 'smooth' })}
-                className="bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors duration-200"
+                onClick={() => document.getElementById('bias-analysis').scrollIntoView({ behavior: 'smooth' })}
+                className="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200"
               >
-                View Research
+                View Bias Research
               </button>
             </div>
           </div>
@@ -55,8 +55,7 @@ function App() {
         <DatabaseInterface />
         <AboutDataset />
         <Technologies />
-        <Findings />
-        <RuntimeAnalysis />
+        <BiasAnalysis />
       </main>
 
       {/* Footer */}

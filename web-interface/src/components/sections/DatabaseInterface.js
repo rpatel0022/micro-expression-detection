@@ -1,46 +1,104 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiDownload, FiFilter, FiRefreshCw, FiDatabase, FiSearch } from 'react-icons/fi';
-import { apiService, mockData } from '../../services/api';
 
 const DatabaseInterface = () => {
-  const [records, setRecords] = useState([]);
+  const [allRecords, setAllRecords] = useState([]);
+  const [displayedRecords, setDisplayedRecords] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage] = useState(25);
   const [filters, setFilters] = useState({
     prediction: '',
     encoding_method: '',
+    model_type: '',
     min_confidence: '',
-    max_confidence: '',
-    limit: 50
+    max_confidence: ''
   });
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      let recordsResponse, statsResponse;
+      // Load data directly from JSON file
+      const response = await fetch('/data_base_file.json');
+      const rawData = await response.json();
 
-      // Try real server first
-      recordsResponse = await apiService.getDatabaseRecords(filters);
-      statsResponse = await apiService.getDatabaseStats();
+      // Transform the raw data to include all available fields
+      const transformedRecords = rawData.map((record, index) => ({
+        id: index + 1,
+        filename: record.path ? record.path.split('/').pop() : 'unknown.jpg',
+        prediction: record.prediction === 'truth' ? 'Truthful' : 'Deceptive',
+        confidence: record.confidence_score,
+        encoding_method: record.encoding_type,
+        model_type: record.model_type,
+        region_importance: record.region_importance,
+        confidence_based_accuracy: record.confidence_based_accuracy,
+        image_accuracy_original: record.image_accuracy_original,
+        image_accuracy_lower_quality: record.image_accuracy_lower_quality,
+        performance_score: record.performance_score,
+        processing_time: (record.performance_score * 5).toFixed(1),
+        created_at: new Date().toISOString()
+      }));
 
-      if (!recordsResponse.success || !statsResponse.success) {
-        console.warn('Server failed, using mock data');
-        // Fallback to mock data
-        recordsResponse = { success: true, data: mockData.databaseRecords };
-        statsResponse = { success: true, data: mockData.databaseStats };
+      // Apply filters
+      let filteredRecords = transformedRecords;
+
+      if (filters.prediction) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.prediction.toLowerCase().includes(filters.prediction.toLowerCase())
+        );
       }
 
-      if (recordsResponse.success && statsResponse.success) {
-        setRecords(recordsResponse.data);
-        setStats(statsResponse.data);
-      } else {
-        setError('Failed to load database data');
+      if (filters.encoding_method) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.encoding_method === filters.encoding_method
+        );
       }
+
+      if (filters.model_type) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.model_type === filters.model_type
+        );
+      }
+
+      if (filters.min_confidence) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.confidence >= parseFloat(filters.min_confidence)
+        );
+      }
+
+      if (filters.max_confidence) {
+        filteredRecords = filteredRecords.filter(record =>
+          record.confidence <= parseFloat(filters.max_confidence)
+        );
+      }
+
+      // Store all filtered records for pagination
+      setAllRecords(filteredRecords);
+
+      // Reset to first page when filters change
+      setCurrentPage(1);
+
+      // Calculate statistics
+      const totalRecords = rawData.length;
+      const truthfulCount = rawData.filter(r => r.prediction === 'truth').length;
+      const deceptiveCount = rawData.filter(r => r.prediction === 'lie').length;
+      const avgConfidence = rawData.reduce((sum, r) => sum + r.confidence_score, 0) / rawData.length;
+
+      const calculatedStats = {
+        total_records: totalRecords,
+        truthful_count: truthfulCount,
+        deceptive_count: deceptiveCount,
+        avg_confidence: avgConfidence
+      };
+
+      setStats(calculatedStats);
+
     } catch (err) {
-      console.error('Database load error:', err);
-      setError('An unexpected error occurred while loading data');
+      console.error('Error loading database data:', err);
+      setError('Failed to load database data from JSON file');
     } finally {
       setLoading(false);
     }
@@ -49,6 +107,13 @@ const DatabaseInterface = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Handle pagination
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    setDisplayedRecords(allRecords.slice(startIndex, endIndex));
+  }, [allRecords, currentPage, recordsPerPage]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -62,33 +127,30 @@ const DatabaseInterface = () => {
     setFilters({
       prediction: '',
       encoding_method: '',
+      model_type: '',
       min_confidence: '',
-      max_confidence: '',
-      limit: 50
+      max_confidence: ''
     });
+    setCurrentPage(1);
   };
 
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const response = await apiService.downloadDatabase(filters);
-      if (!response.success) {
-        console.warn('Server download failed, creating mock CSV');
-        downloadMockCSV();
-      }
+      downloadCSV();
     } catch (err) {
       console.error('Download error:', err);
-      downloadMockCSV();
+      setError('Failed to download CSV');
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadMockCSV = () => {
+  const downloadCSV = () => {
     const csvContent = [
-      'id,filename,prediction,confidence,encoding_method,processing_time,created_at',
-      ...mockData.databaseRecords.map(record =>
-        `${record.id},${record.filename},${record.prediction},${record.confidence},${record.encoding_method},${record.processing_time},${record.created_at}`
+      'id,filename,prediction,confidence,encoding_method,model_type,region_importance,confidence_based_accuracy,image_accuracy_original,image_accuracy_lower_quality,performance_score,processing_time,created_at',
+      ...allRecords.map(record =>
+        `${record.id},"${record.filename}","${record.prediction}",${record.confidence},"${record.encoding_method}","${record.model_type}","${record.region_importance}","${record.confidence_based_accuracy}",${record.image_accuracy_original},${record.image_accuracy_lower_quality},${record.performance_score},${record.processing_time},"${record.created_at}"`
       )
     ].join('\n');
 
@@ -235,9 +297,22 @@ const DatabaseInterface = () => {
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               >
                 <option value="">All</option>
-                <option value="HOG">HOG</option>
-                <option value="dlib">dlib</option>
-                <option value="ResNet18">ResNet18</option>
+                <option value="low_level">Low Level</option>
+                <option value="high_level">High Level</option>
+                <option value="pretrained">Pretrained</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Model Type</label>
+              <select
+                value={filters.model_type}
+                onChange={(e) => handleFilterChange('model_type', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="">All</option>
+                <option value="Random Forest">Random Forest</option>
+                <option value="Decision Tree">Decision Tree</option>
               </select>
             </div>
 
@@ -269,28 +344,23 @@ const DatabaseInterface = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Limit</label>
-              <select
-                value={filters.limit}
-                onChange={(e) => handleFilterChange('limit', parseInt(e.target.value))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-              >
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={500}>500</option>
-              </select>
-            </div>
+
           </div>
         </div>
 
         {/* Results Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="text-lg font-medium text-gray-900">
-              Database Records ({records.length} results)
+              Database Records ({allRecords.length} total, showing {displayedRecords.length} on page {currentPage})
             </h3>
+            <div className="text-sm text-gray-500">
+              {allRecords.length > 0 && (
+                <>
+                  Showing {((currentPage - 1) * recordsPerPage) + 1} to {Math.min(currentPage * recordsPerPage, allRecords.length)} of {allRecords.length} records
+                </>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -307,66 +377,149 @@ const DatabaseInterface = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Filename
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Prediction
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Confidence
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Encoding
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Processing Time
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Model Type
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Region Importance
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Confidence Accuracy
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Original Accuracy
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Lower Quality Accuracy
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Performance Score
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created At
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {records.map((record) => (
+                  {displayedRecords.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                         {record.id}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center">
-                          <div className="h-8 w-8 bg-gray-200 rounded mr-3 flex items-center justify-center">
+                          <div className="h-6 w-6 bg-gray-200 rounded mr-2 flex items-center justify-center text-xs">
                             📷
                           </div>
-                          {record.filename}
+                          <span className="truncate max-w-32">{record.filename}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <span className={`text-sm font-medium ${getPredictionColor(record.prediction)}`}>
                           {record.prediction}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <span className={`text-sm font-medium ${getConfidenceColor(record.confidence)}`}>
                           {(record.confidence * 100).toFixed(1)}%
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                         {record.encoding_method}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {record.processing_time}s
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.model_type}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="truncate max-w-24">{record.region_importance}</span>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="truncate max-w-32">{record.confidence_based_accuracy}</span>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {(record.image_accuracy_original * 100).toFixed(1)}%
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {(record.image_accuracy_lower_quality * 100).toFixed(1)}%
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.performance_score.toFixed(3)}
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(record.created_at).toLocaleDateString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {allRecords.length > recordsPerPage && (
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Page {currentPage} of {Math.ceil(allRecords.length / recordsPerPage)}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+
+                {/* Page Numbers */}
+                {Array.from({ length: Math.ceil(allRecords.length / recordsPerPage) }, (_, i) => i + 1)
+                  .filter(page => {
+                    const totalPages = Math.ceil(allRecords.length / recordsPerPage);
+                    if (totalPages <= 7) return true;
+                    if (page === 1 || page === totalPages) return true;
+                    if (page >= currentPage - 2 && page <= currentPage + 2) return true;
+                    return false;
+                  })
+                  .map((page, index, array) => (
+                    <React.Fragment key={page}>
+                      {index > 0 && array[index - 1] !== page - 1 && (
+                        <span className="px-3 py-2 text-gray-500">...</span>
+                      )}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 border rounded-md text-sm font-medium ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  ))}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(allRecords.length / recordsPerPage)))}
+                  disabled={currentPage === Math.ceil(allRecords.length / recordsPerPage)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

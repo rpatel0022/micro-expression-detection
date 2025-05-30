@@ -9,7 +9,7 @@ const LivePrediction = () => {
   const [error, setError] = useState(null);
   const [history, setHistory] = useState([]);
   const [analysisMode, setAnalysisMode] = useState('real'); // Always use real CS179G models
-  const [selectedMethods, setSelectedMethods] = useState(['dlib_rf', 'hog_dt', 'resnet_lr']);
+  const [selectedMethods, setSelectedMethods] = useState(['dlib_rf', 'hog_dt', 'resnet_rf']);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (event) => {
@@ -67,11 +67,21 @@ const LivePrediction = () => {
           console.warn('Real CS179G server failed, using mock data:', response.error);
           // Fallback to mock data with real-looking results
           await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate processing
+          // Method name mapping
+          const methodNameMap = {
+            'hog_rf': 'Low Level + Random Forest',
+            'resnet_rf': 'High Level + Random Forest',
+            'hog_dt': 'Low Level + Decision Tree',
+            'resnet_dt': 'High Level + Decision Tree',
+            'dlib_rf': 'Pretrained + Random Forest',
+            'dlib_dt': 'Pretrained + Decision Tree'
+          };
+
           response = {
             success: true,
             data: {
               results: selectedMethods.map(method => ({
-                model_combination: method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                model_combination: methodNameMap[method] || method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
                 prediction: Math.random() > 0.5 ? 'truth' : 'lie',
                 confidence: 0.75 + Math.random() * 0.2,
                 processing_time: 1.2 + Math.random() * 2.0,
@@ -189,13 +199,12 @@ const LivePrediction = () => {
             <h4 className="text-lg font-semibold text-green-800 mb-3">🎯 Select CS179G Analysis Methods</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {[
-                { value: 'hog_rf', label: 'HOG + Random Forest', desc: 'Low-level features' },
-                { value: 'hog_dt', label: 'HOG + Decision Tree', desc: 'Low-level features' },
-                { value: 'dlib_rf', label: 'dlib + Random Forest', desc: 'Facial landmarks' },
-                { value: 'dlib_dt', label: 'dlib + Decision Tree', desc: 'Facial landmarks' },
-                { value: 'resnet_rf', label: 'ResNet18 + Random Forest', desc: 'Deep features' },
-                { value: 'resnet_dt', label: 'ResNet18 + Decision Tree', desc: 'Deep features' },
-                { value: 'resnet_lr', label: 'ResNet18 + Logistic Regression', desc: 'Deep features' }
+                { value: 'hog_rf', label: 'Low Level + Random Forest', desc: 'Low-level features' },
+                { value: 'resnet_rf', label: 'High Level + Random Forest', desc: 'Deep features' },
+                { value: 'hog_dt', label: 'Low Level + Decision Tree', desc: 'Low-level features' },
+                { value: 'resnet_dt', label: 'High Level + Decision Tree', desc: 'Deep features' },
+                { value: 'dlib_rf', label: 'Pretrained + Random Forest', desc: 'Facial landmarks' },
+                { value: 'dlib_dt', label: 'Pretrained + Decision Tree', desc: 'Facial landmarks' }
               ].map(method => (
                 <label key={method.value} className="flex items-start cursor-pointer bg-white p-3 rounded border hover:bg-green-50">
                   <input
