@@ -1,15 +1,13 @@
 {
   "files": {
     "main.css": "/micro-expression-detection/static/css/main.d0485da7.css",
-    "main.js": "/micro-expression-detection/static/js/main.b4abd6e4.js",
-    "static/js/453.c3d0a08c.chunk.js": "/micro-expression-detection/static/js/453.c3d0a08c.chunk.js",
+    "main.js": "/micro-expression-detection/static/js/main.c5bfd5f8.js",
     "index.html": "/micro-expression-detection/index.html",
     "main.d0485da7.css.map": "/micro-expression-detection/static/css/main.d0485da7.css.map",
-    "main.b4abd6e4.js.map": "/micro-expression-detection/static/js/main.b4abd6e4.js.map",
-    "453.c3d0a08c.chunk.js.map": "/micro-expression-detection/static/js/453.c3d0a08c.chunk.js.map"
+    "main.c5bfd5f8.js.map": "/micro-expression-detection/static/js/main.c5bfd5f8.js.map"
   },
   "entrypoints": [
     "static/css/main.d0485da7.css",
-    "static/js/main.b4abd6e4.js"
+    "static/js/main.c5bfd5f8.js"
   ]
 }
